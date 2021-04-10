@@ -1162,7 +1162,7 @@ namespace Xmods.DataLib
                 }
             }
             this.bonehashcount = br.ReadInt32();
-            this.bonehasharray = new uint[this.bonehashcount];
+            this.bonehasharray = new uint[(this.bonehashcount < 0) ? 0 : this.bonehashcount];
             for (int i = 0; i < this.bonehashcount; i++)
             {
                 this.bonehasharray[i] = br.ReadUInt32();
@@ -1252,7 +1252,7 @@ namespace Xmods.DataLib
                             this.vBones[i].WriteAssignments(bw, this.version, this.bonehashcount - 1);
                             break;
                         case (5):
-                            this.vBones[i].WriteWeights(bw, this.version);
+                            this.vBones[i].WriteWeights(bw, this.vertform[j].subtype);
                             break;
                         case (6):
                             this.vTangents[i].Write(bw);
@@ -4273,9 +4273,9 @@ namespace Xmods.DataLib
                 }
 
             }
-            internal void WriteWeights(BinaryWriter bw, int version)
+            internal void WriteWeights(BinaryWriter bw, int subtype)
             {
-                if (version == 5)
+                if (subtype == 1)
                 {
                     for (int i = 0; i < 4; i++)
                     {
@@ -4283,7 +4283,7 @@ namespace Xmods.DataLib
                         bw.Write(tmp);
                     }
                 }
-                else if (version >= 12)
+                else if (subtype == 2)
                 {
                     bw.Write(this.weights);
                 }
