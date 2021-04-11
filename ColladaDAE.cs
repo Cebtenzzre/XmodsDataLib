@@ -445,10 +445,11 @@ namespace Xmods.DataLib
                 else if (item is library_visual_scenes)
                 {
                     library_visual_scenes scenes = item as library_visual_scenes;
-                    if (scenes == null || scenes.visual_scene == null) continue;
+                    if (scenes.visual_scene == null) continue;
 
                     foreach (visual_scene scene in scenes.visual_scene)
                     {
+                        if (scene.node == null) continue;
                         List<SkeletonJoint> joints = new List<SkeletonJoint>();
                         Matrix4D transform = Matrix4D.Identity;
                         foreach (node n in scene.node)
