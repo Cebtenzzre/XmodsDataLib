@@ -108,6 +108,7 @@ namespace Xmods.DataLib
                         if (geomMesh == null) continue;
 
                         int positionOffset = -1, normalOffset = -1, colorOffset = -1, vertexOffset = -1;
+                        int colorStride = -1;
                         SortedDictionary<int, int> uvOffset = new SortedDictionary<int, int>();
                         double[] positions = new double[0];
                         double[] normals = new double[0];
@@ -194,6 +195,7 @@ namespace Xmods.DataLib
                                     {
                                         colors = (s.Item as float_array).Values;
                                         colorOffset = (int)input.offset;
+                                        colorStride = (int)s.technique_common.accessor.stride;
                                     }
                                 }
                             }
@@ -228,6 +230,7 @@ namespace Xmods.DataLib
                                         {
                                             colors = (s.Item as float_array).Values;
                                             colorOffset = vertexOffset;
+                                            colorStride = (int)s.technique_common.accessor.stride;
                                         }
                                     }
                                 }
@@ -271,7 +274,7 @@ namespace Xmods.DataLib
                         }
 
                         List<uint> colorList = new List<uint>();
-                        for (int i = 0; i < colors.Length; i += 3)
+                        for (int i = 0; i < colors.Length; i += colorStride)
                         {
                             byte r = (byte)(colors[i] * 255);
                             byte g = (byte)(colors[i + 1] * 255);
