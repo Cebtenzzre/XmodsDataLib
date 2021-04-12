@@ -27,7 +27,7 @@ namespace Xmods.DataLib
 {
     public class TONE
     {
-        uint version;                                  // currently 6, now 7, now 8, now 10 (0x0A)
+        uint version;                                  // currently 6, now 7, now 8, now 10 (0x0A), now 11 (0x0B)
         SkinSetDesc[] skinSets;                         // v10 and up only
         OverlayDesc[] overlayList;
         UInt16 saturation;
@@ -37,11 +37,29 @@ namespace Xmods.DataLib
         Color[] colorList;
         float sortOrder;
         ulong tuningInstance;
+        SkinPanel skinPanel;
+        float sliderLow;
+        float sliderHigh;
+        float sliderIncrement;
+
+        public uint LatestVersion = 11;
 
         public uint Version
         {
             get { return this.version; }
             set { this.version = value; }
+        }
+
+        public void UpdateToLatestVerson()
+        {
+            if (version < 11)
+            {
+                this.skinPanel = SkinPanel.Miscellaneous;
+                this.sliderLow = -.05f;
+                this.sliderHigh = .05f;
+                this.sliderIncrement = .005f;
+            }
+            if (version < LatestVersion) version = LatestVersion;
         }
 
         public TONE.SkinSetDesc[] SkinSets
@@ -188,9 +206,31 @@ namespace Xmods.DataLib
             set { this.tuningInstance = value; }
         }
 
+        public SkinPanel SkinType
+        {
+            get { return this.skinPanel; }
+            set { this.skinPanel = value; }
+        }
+
+        public float SliderMinimum
+        {
+            get { return this.sliderLow; }
+            set { this.sliderLow = value; }
+        }
+        public float SliderMaximum
+        {
+            get { return this.sliderHigh; }
+            set { this.sliderHigh = value; }
+        }
+        public float SliderIncrement
+        {
+            get { return this.sliderIncrement; }
+            set { this.sliderIncrement = value; }
+        }
+
         public TONE()
         {
-            this.version = 10;
+            this.version = 11;
             this.skinSets = new SkinSetDesc[3] { new TONE.SkinSetDesc(), new TONE.SkinSetDesc(), new TONE.SkinSetDesc() };
             this.overlayList = new OverlayDesc[0];
             this.saturation = 0;
@@ -201,6 +241,10 @@ namespace Xmods.DataLib
             this.colorList[0] = new Color();
             this.sortOrder = 100f;
             this.tuningInstance = 0x00000000000260A5U;          //human skintone tuning
+            this.skinPanel = SkinPanel.Miscellaneous;
+            this.sliderLow = -.05f;
+            this.sliderHigh = .05f;
+            this.sliderIncrement = .005f;
         }
 
         public TONE(uint version)
@@ -216,6 +260,10 @@ namespace Xmods.DataLib
             this.colorList[0] = new Color();
             this.sortOrder = 100f;
             this.tuningInstance = 0x00000000000260A5U;          //human skintone tuning
+            this.skinPanel = SkinPanel.Miscellaneous;
+            this.sliderLow = -.05f;
+            this.sliderHigh = .05f;
+            this.sliderIncrement = .005f;
         }
 
         public TONE(BinaryReader br)
@@ -271,6 +319,13 @@ namespace Xmods.DataLib
                 this.skinSets[1] = new SkinSetDesc(0ul, 0ul, 1f, tmpOpacity, tmpOpacity2);
                 this.skinSets[2] = new SkinSetDesc(0ul, 0ul, 1f, tmpOpacity, tmpOpacity2);
             }
+            if (this.version > 10)
+            {
+                this.skinPanel = (SkinPanel)br.ReadUInt16();
+                this.sliderLow = br.ReadSingle();
+                this.sliderHigh = br.ReadSingle();
+                this.sliderIncrement = br.ReadSingle();
+            }
         }
 
         public void Write(BinaryWriter bw)
@@ -312,6 +367,13 @@ namespace Xmods.DataLib
             if (this.version >= 8)
             {
                 bw.Write(this.tuningInstance);
+            }
+            if (this.version > 10)
+            {
+                bw.Write((ushort)this.skinPanel);
+                bw.Write(this.sliderLow);
+                bw.Write(this.sliderHigh);
+                bw.Write(this.sliderIncrement);
             }
         }
 
@@ -393,6 +455,14 @@ namespace Xmods.DataLib
                 this.flags.Write(bw);
                 bw.Write(this.textureInstance);
             }
+        }
+
+        public enum SkinPanel : ushort
+        {
+            Warm = 1,
+            Neutral = 2,
+            Cool = 3,
+            Miscellaneous = 4
         }
     }
 }

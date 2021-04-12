@@ -62,6 +62,7 @@
     <Compile Include="CASP.cs" />
     <Compile Include="ColladaDAE.cs" />
     <Compile Include="collada_schema_1_4.cs" />
+    <Compile Include="LRLE.cs" />
     <Compile Include="SMOD.cs" />
     <Compile Include="CTMesh.cs" />
     <Compile Include="DATA.cs" />

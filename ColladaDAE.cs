@@ -675,12 +675,15 @@ namespace Xmods.DataLib
                 GEOM.Face[] faces = layers[m];
                 for (int f = 0; f < faces.Length; f++)
                 {
-                    for (
-                    positions.Add(axisTransform * new Vector3(geom.getPosition(v)));
-                    if (hasNormals) normals.Add(axisTransform * new Vector3(geom.getNormal(v)));
-                    if (hasUVs) for (int i = 0; i < geom.numberUVsets; i++) uvs[i].Add(new Vector2(geom.getUV(v, i)));
-                    if (hasColors) colors.Add(geom.getTagval(v));
-                    if (hasBones) bones.Add(new BoneAssignment(geom.getBones(v), geom.getBoneWeights(v)));
+                    for (int p = 0; p < faces[f].meshface.Length; p++)
+                    {
+                        int v = (int)faces[f].meshface[p];
+                        positions.Add(axisTransform * new Vector3(geom.getPosition(v)));
+                        if (hasNormals) normals.Add(axisTransform * new Vector3(geom.getNormal(v)));
+                        if (hasUVs) for (int i = 0; i < geom.numberUVsets; i++) uvs[i].Add(new Vector2(geom.getUV(v, i)));
+                        if (hasColors) colors.Add(geom.getTagval(v));
+                        if (hasBones) bones.Add(new BoneAssignment(geom.getBones(v), geom.getBoneWeights(v)));
+                    }
                 }
                 mesh.positions = positions.ToArray();
                 mesh.normals = normals.ToArray();
@@ -740,10 +743,10 @@ namespace Xmods.DataLib
             }
 
             DAE.SkeletonJoint[] joints = new SkeletonJoint[rig.NumberBones];
-            joints[0] = new SkeletonJoint(rig.Bones[0].BoneName, "", axisTransform * rig.Bones[0].LocalTransform);
+            joints[0] = new SkeletonJoint(rig.Bones[0].BoneName, "", rig.Bones[0].LocalTransform, rig.Bones[0].GlobalRotation);
             for (int i = 1; i < rig.NumberBones; i++)
             {
-                joints[i] = new SkeletonJoint(rig.Bones[i].BoneName, rig.Bones[i].ParentName, rig.Bones[i].LocalTransform);
+                joints[i] = new SkeletonJoint(rig.Bones[i].BoneName, rig.Bones[i].ParentName, rig.Bones[i].LocalTransform, rig.Bones[i].GlobalRotation);
             }
             this.skeleton = new Skeleton(Matrix4D.Identity, joints);
         }
@@ -894,11 +897,12 @@ namespace Xmods.DataLib
                 string vcount = "";
                 for (int i = 0; i < cmesh.TotalFaces; i++) vcount += "3 ";
                 poly.vcount = vcount;
-                string p = "";
+                string[] facePoints = new string[cmesh.facePoints.Length];
                 for (int i = 0; i < cmesh.facePoints.Length; i++)
                 {
-                    p += cmesh.facePoints[i].ToString() + " ";
+                    facePoints[i] = cmesh.facePoints[i].ToString();
                 }
+                string p = String.Join(" ", facePoints);
                 poly.p = p;
 
                 daemesh.Items = new object[] { poly };
@@ -1052,10 +1056,17 @@ namespace Xmods.DataLib
                 Items = new object[] { new matrix() { Values = joint.localTransform.Values } },
                 ItemsElementName = new ItemsChoiceType2[] { ItemsChoiceType2.matrix },
             };
-            technique[] tech = new technique[] { new technique() { profile = "blender", layer = "0", roll = "-2.25881", tip_x = "0", tip_y = "-0.000999987", tip_z = "0" } };
-            extra[] ex = new extra[] { new extra() { technique = tech } };
-            jointNode.extra = ex;
-            
+            if (joint.globalRotation != null)
+            {
+                AxisAngle aa = mat3_to_vec_roll(joint.globalRotation.toMatrix3D());
+                string roll = aa.Angle.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string x = (aa.X / 200.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string y = (aa.Y / 200.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string z = (aa.Z / 200.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                technique[] tech = new technique[] { new technique() { profile = "blender", layer = "0", roll = roll, tip_x = x, tip_y = y, tip_z = z } };
+                extra[] ex = new extra[] { new extra() { technique = tech } };
+                jointNode.extra = ex;
+            }            
             List<node> children = new List<node>();
             foreach (SkeletonJoint j in skeleton)
             {
@@ -1066,6 +1077,74 @@ namespace Xmods.DataLib
             }
             jointNode.node1 = children.Count > 0 ? children.ToArray() : null;
             return jointNode;
+        }
+
+        //port of the updated C function from armature.c
+        //https://developer.blender.org/T39470
+        //note that C accesses columns first, so all matrix indices are swapped compared to the C version
+        public static Matrix3D vec_roll_to_mat3(Vector3 vec, float roll)
+        {
+            vec.Normalize();
+            float[] nor = vec.Coordinates;
+            double THETA_THRESHOLD_NEGY = 1.0e-9;
+            double THETA_THRESHOLD_NEGY_CLOSE = 1.0e-5;
+
+            // create a 3x3 matrix
+            float[,] bMatrix = new float[3, 3];
+
+            float theta = 1.0f + nor[1];
+            float test = nor[0] > 0f ? nor[0] : nor[2];
+            float test2 = test > 0f ? theta : test;
+            if ((theta > THETA_THRESHOLD_NEGY_CLOSE) || (test2 > THETA_THRESHOLD_NEGY))
+            {
+                bMatrix[1, 0] = -nor[0];
+                bMatrix[0, 1] = nor[0];
+                bMatrix[1, 1] = nor[1];
+                bMatrix[2, 1] = nor[2];
+                bMatrix[1, 2] = -nor[2];
+                if (theta > THETA_THRESHOLD_NEGY_CLOSE)
+                {
+                    //If nor is far enough from -Y, apply the general case.
+                    bMatrix[0, 0] = 1 - nor[0] * nor[0] / theta;
+                    bMatrix[2, 2] = 1 - nor[2] * nor[2] / theta;
+                    bMatrix[0, 2] = bMatrix[2, 0] = -nor[0] * nor[2] / theta;
+                }
+                else
+                {
+                    // If nor is too close to -Y, apply the special case.
+                    theta = nor[0] * nor[0] + nor[2] * nor[2];
+                    bMatrix[0, 0] = (nor[0] + nor[2]) * (nor[0] - nor[2]) / -theta;
+                    bMatrix[2, 2] = -bMatrix[0, 0];
+                    bMatrix[0, 2] = bMatrix[2, 0] = 2.0f * nor[0] * nor[2] / theta;
+                }
+            }
+            else
+            {
+                // If nor is -Y, simple symmetry by Z axis.
+                bMatrix[0, 0] = bMatrix[1, 1] = -1.0f;
+            }
+
+            // Make Roll matrix
+            AxisAngle aa = new AxisAngle(roll, nor);
+            Matrix3D rMatrix = aa.ToMatrix();
+
+            // Combine and output result
+            Matrix3D mat = rMatrix * new Matrix3D(bMatrix);
+            return mat;
+        }
+        
+        public static AxisAngle mat3_to_vec_roll(Matrix3D mat)
+        {
+            // this hasn't changed
+            float[,] matrix = mat.Matrix;
+            Vector3 vec = new Vector3(matrix[0, 1], matrix[1, 1], matrix[2, 1]);
+            Matrix3D vecmat = vec_roll_to_mat3(vec, 0f);
+            Matrix3D vecmatinv = vecmat.Inverse();
+            Matrix3D rollmatrix = vecmatinv * mat;
+            float[,] rollmat = rollmatrix.Matrix;
+            float roll = (float)Math.Atan2(rollmat[0, 2], rollmat[2, 2]);
+            if (roll == float.NaN) roll = 0;
+            return new AxisAngle(roll, vec);
         }
         
         public class ColladaMesh
@@ -1183,11 +1262,20 @@ namespace Xmods.DataLib
             public string jointName;
             public string parentName;
             public Matrix4D localTransform;
+            public Quaternion globalRotation;
             public SkeletonJoint(string jointName, string parentName, Matrix4D localTransform)
             {
                 this.jointName = jointName;
                 this.parentName = parentName;
                 this.localTransform = localTransform;
+                this.globalRotation = null;
+            }
+            public SkeletonJoint(string jointName, string parentName, Matrix4D localTransform, Quaternion globalRotation)
+            {
+                this.jointName = jointName;
+                this.parentName = parentName;
+                this.localTransform = localTransform;
+                this.globalRotation = globalRotation;
             }
         }
 

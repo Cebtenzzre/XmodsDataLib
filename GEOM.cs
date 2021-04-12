@@ -6538,6 +6538,23 @@ namespace Xmods.DataLib
                 (byUV ? thisUV.Equals(otherUV) : true) && (byNormals ? thisNormal.Equals(otherNormal) : true) );
         }
 
+        //public GEOM[] GEOMsFromLayers(List<Face[]>[] layers)
+        //{
+        //    GEOM[] meshLayers = new GEOM[layers.Length];
+        //    foreach (List<Face[]> faces in layers)
+        //    {
+        //        GEOM geom = new GEOM(this);
+        //        List<position> positions = new List<position>();
+        //        List<normal> normals = new List<normal>();
+        //        List<uv> uv0 = new List<uv>();
+        //        List<uv> uv1 = new List<uv>();
+        //        List<Bones> bones = new List<Bones>();
+        //        List<tangent> tangents = new List<tangent>();
+        //        List<tagval> vertColors = new List<tagval>();
+
+        //    }
+        //}
+
         public Vector3 MeshCenter()
         {
             double x = 0, y = 0, z = 0;

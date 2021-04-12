@@ -27,7 +27,7 @@ namespace Xmods.DataLib
 {
     public class CASP       //Sims 4 CASP resource
     {
-        uint version;	// 0x2A is current
+        uint version;	// 0x2C is current
         uint offset;	// to resource reference table from end of header (ie offset + 8)
         int presetCount; // Not used for TS4
         string partname;		// UnicodeBE - part name
@@ -47,6 +47,8 @@ namespace Xmods.DataLib
                                 // 1 bit Deprecated
         byte parameterFlags2; // additional parameter flags:
                                 // 5 bits unused
+                                // 1 bit CreateInGame
+                                // 1 bit unknown
                                 // 1 bit DefaultForBodyTypeFemale
                                 // 1 bit DefaultForBodyTypeMale
                                 // 1 bit RestrictOppositeFrame
@@ -58,6 +60,7 @@ namespace Xmods.DataLib
         uint price;             //deprecated
         uint titleKey;
         uint partDescKey;
+        uint createDescriptionKey;       // added in version 0x2B
         byte textureSpace;
         uint bodyType;
         uint bodySubType;    // usually 8, not used before version 37
@@ -90,6 +93,10 @@ namespace Xmods.DataLib
                                         // restrictions, and there is no mOppositeGenderPart specified, use this part.
                                         // Maxis convention is to use this to specify a replacement part which is not
                                         // necessarily the opposite gendered version of the part. Set to 0 for none.
+        OpacitySettings opacitySlider;     //V 0x2C
+        SliderSettings hueSlider;           // "
+        SliderSettings saturationSlider;    // "
+        SliderSettings brightnessSlider;    // "
         byte nakedKey;
         byte parentKey;
         int  sortLayer;    
@@ -112,9 +119,16 @@ namespace Xmods.DataLib
                               // --repeat(count)
         TGI[] IGTtable;
 
+        uint currentVersion = 0x2C;
+
         public bool UpdateToLatestVersion()
         {
-            // Current Version is 0x2A
+            return UpdateToLatestVersion(false, false);
+        }
+        public bool UpdateToLatestVersion(bool legacyCompatible, bool sliderCompatible)
+        {
+            // Latest Version is 0x2C but 0x2B still used for non-makeup items.
+            if (legacyCompatible && sliderCompatible) legacyCompatible = false;
             if (version < 28)
             {
                 VoiceEffect = 0;
@@ -166,14 +180,43 @@ namespace Xmods.DataLib
             {
                 reserved = 0;
             }
-            if (this.version < 0x2A)
+            if (version < 43)
             {
-                this.version = 0x2A;
+                createDescriptionKey = 0;
+            }
+
+            if (legacyCompatible)
+            {
+                if (this.version != 0x2A)
+                {
+                    this.version = 0x2A;
+                    return true;
+                }
+            }
+            else if (sliderCompatible)
+            {
+                if (this.version < 0x2C)
+                {
+                    this.opacitySlider = new OpacitySettings();
+                    this.hueSlider = new SliderSettings();
+                    this.saturationSlider = new SliderSettings();
+                    this.brightnessSlider = new SliderSettings();
+                    this.version = 0x2C;
+                    return true;
+                }
+            }
+            else if (this.version < 0x2B)
+            {
+                this.version = 0x2B;
                 return true;
             }
             return false;
         }
 
+        public uint Version
+        {
+            get { return this.version; }
+        }
         public string PartName
         {
             get { return this.partname; }
@@ -298,6 +341,24 @@ namespace Xmods.DataLib
                 else { this.parameterFlags2 &= (byte)(~XmodsEnums.CASParamFlag2.RestrictOppositeFrame); }
             }
         }
+        public bool FlagUnknown
+        {
+            get { return (this.parameterFlags2 & (byte)XmodsEnums.CASParamFlag2.Unknown) > 0; }
+            set
+            {
+                if (value) { this.parameterFlags2 |= (byte)XmodsEnums.CASParamFlag2.Unknown; }
+                else { this.parameterFlags2 &= (byte)(~XmodsEnums.CASParamFlag2.Unknown); }
+            }
+        }
+        public bool FlagCreateInGame
+        {
+            get { return (this.parameterFlags2 & (byte)XmodsEnums.CASParamFlag2.CreateInGame) > 0; }
+            set
+            {
+                if (value) { this.parameterFlags2 |= (byte)XmodsEnums.CASParamFlag2.CreateInGame; }
+                else { this.parameterFlags2 &= (byte)(~XmodsEnums.CASParamFlag2.CreateInGame); }
+            }
+        }
         public ulong ExcludePartFlags
         {
             get { return this.excludePartFlags; }
@@ -340,14 +401,28 @@ namespace Xmods.DataLib
                 else { this.occultBitField &= (uint)(~XmodsEnums.OccultTypesDisabled.Vampire); }
             }
         }
-        public bool OccultDisableForWitch
+        public bool OccultDisableForMermaid
         {
-            get { return (this.occultBitField & (uint)XmodsEnums.OccultTypesDisabled.Witch) > 0; }
+            get { return (this.occultBitField & (uint)XmodsEnums.OccultTypesDisabled.Mermaid) > 0; }
             set
             {
-                if (value) { this.occultBitField |= (uint)XmodsEnums.OccultTypesDisabled.Witch; }
-                else { this.occultBitField &= (uint)(~XmodsEnums.OccultTypesDisabled.Witch); }
+                if (value) { this.occultBitField |= (uint)XmodsEnums.OccultTypesDisabled.Mermaid; }
+                else { this.occultBitField &= (uint)(~XmodsEnums.OccultTypesDisabled.Mermaid); }
             }
+        }
+        public bool OccultDisableForWitch
+        {
+            get { return (this.occultBitField & (uint)XmodsEnums.OccultTypesDisabled.Spellcaster) > 0; }
+            set
+            {
+                if (value) { this.occultBitField |= (uint)XmodsEnums.OccultTypesDisabled.Spellcaster; }
+                else { this.occultBitField &= (uint)(~XmodsEnums.OccultTypesDisabled.Spellcaster); }
+            }
+        }
+        public uint CreateDescriptionKey
+        {
+            get { return this.createDescriptionKey; }
+            set { this.createDescriptionKey = value; }
         }
         public XmodsEnums.BodyType BodyType
         {
@@ -443,6 +518,27 @@ namespace Xmods.DataLib
                 if (value) { this.packFlags |= (byte)XmodsEnums.PackFlags.HidePackIcon; }
                 else { this.packFlags &= (byte)(~XmodsEnums.PackFlags.HidePackIcon); }
             }
+        }
+
+        public OpacitySettings OpacitySliderSettings
+        {
+            get { return this.opacitySlider; }
+            set { this.opacitySlider = value; }
+        }
+        public SliderSettings HueSliderSettings
+        {
+            get { return this.hueSlider; }
+            set { this.hueSlider = value; }
+        }
+        public SliderSettings SaturationSliderSettings
+        {
+            get { return this.saturationSlider; }
+            set { this.saturationSlider = value; }
+        }
+        public SliderSettings BrightnessSliderSettings
+        {
+            get { return this.brightnessSlider; }
+            set { this.brightnessSlider = value; }
         }
 
         public UInt64 MeshInstance
@@ -630,6 +726,31 @@ namespace Xmods.DataLib
             get { return this.swatchIndex; }
             set { this.swatchIndex = (byte)value; }
         }
+        public TGI AlternateThumbLink
+        {
+            get { return this.LinkList[this.swatchIndex]; }
+            set 
+            {
+                TGI empty = new TGI(0, 0, 0);
+                if (!this.LinkList[this.swatchIndex].Equals(empty) && value.Equals(empty))   // going from link to empty tgi
+                {
+                    this.LinkList[this.swatchIndex] = value;
+                    this.RebuildLinkList();
+                }
+                else if (this.LinkList[this.swatchIndex].Equals(empty) && !value.Equals(empty))  // going from empty to link
+                {
+                    this.addLink(value);
+                }
+                else
+                {
+                    this.LinkList[this.swatchIndex] = value;
+                }
+            }
+        }
+        public bool HasAlternateThumb
+        {
+            get { return this.LinkList[this.swatchIndex].Instance > 0; }
+        }
         public byte NakedKey
         {
             get { return this.nakedKey; }
@@ -709,6 +830,7 @@ namespace Xmods.DataLib
             br.BaseStream.Position = 0;
             if (br.BaseStream.Length < 32) throw new CASPEmptyException("Attempt to read empty CASP");
             version = br.ReadUInt32();
+            if (version > currentVersion) throw new CASPVersionException("Unsupported version of CASP");
             offset = br.ReadUInt32();
             presetCount = br.ReadInt32();
             partname = new BinaryReader(br.BaseStream, Encoding.BigEndianUnicode).ReadString();
@@ -740,6 +862,10 @@ namespace Xmods.DataLib
             price = br.ReadUInt32();
             titleKey = br.ReadUInt32();
             partDescKey = br.ReadUInt32();
+            if (version > 42)
+            {
+                createDescriptionKey = br.ReadUInt32();
+            }
             textureSpace = br.ReadByte();
             bodyType = br.ReadUInt32();
             bodySubType = br.ReadUInt32();
@@ -789,6 +915,13 @@ namespace Xmods.DataLib
             if(version >= 39)
             {
                 fallbackPart = br.ReadUInt64();
+            }
+            if (version >= 44)
+            {
+                opacitySlider = new OpacitySettings(br);
+                hueSlider = new SliderSettings(br);
+                saturationSlider = new SliderSettings(br);
+                brightnessSlider = new SliderSettings(br);
             }
             nakedKey = br.ReadByte();
             parentKey = br.ReadByte();
@@ -867,6 +1000,10 @@ namespace Xmods.DataLib
             bw.Write(price);
             bw.Write(titleKey);
             bw.Write(partDescKey);
+            if (version > 42)
+            {
+                bw.Write(createDescriptionKey);
+            }
             bw.Write(textureSpace);
             bw.Write(bodyType);
             bw.Write(bodySubType);
@@ -915,6 +1052,13 @@ namespace Xmods.DataLib
             if (version >= 39)
             {
                  bw.Write(fallbackPart);
+            }
+            if (version >= 44)
+            {
+                opacitySlider.Write(bw);
+                hueSlider.Write(bw);
+                saturationSlider.Write(bw);
+                brightnessSlider.Write(bw);
             }
             bw.Write(nakedKey);
             bw.Write(parentKey);
@@ -1187,6 +1331,85 @@ namespace Xmods.DataLib
             }
         }
 
+        public class OpacitySettings
+        {
+            internal float minimum;
+            internal float increment;
+
+            public float Minimum
+            {
+                get { return this.minimum; }
+                set { this.minimum = value; }
+            }
+            public float Increment
+            {
+                get { return this.increment; }
+                set { this.increment = value; }
+            }
+
+            public OpacitySettings()
+            {
+                this.minimum = .2f;
+                this.increment = .05f;
+            }
+
+            public OpacitySettings(float minimum, float increment)
+            {
+                this.minimum = minimum;
+                this.increment = increment;
+            }
+
+            internal OpacitySettings(BinaryReader br)
+            {
+                this.minimum = br.ReadSingle();
+                this.increment = br.ReadSingle();
+            }
+
+            internal virtual void Write(BinaryWriter bw)
+            {
+                bw.Write(this.minimum);
+                bw.Write(this.increment);
+            }
+        }
+
+        public class SliderSettings : OpacitySettings
+        {
+            internal float maximum;
+
+            public float Maximum
+            {
+                get { return this.maximum; }
+                set { this.maximum = value; }
+            }
+
+            public SliderSettings() 
+            {
+                this.minimum = -.5f;
+                this.maximum = .5f;
+                this.increment = .05f;
+            }
+
+            public SliderSettings(float minimum, float maximum, float increment) 
+            {
+                this.minimum = minimum;
+                this.maximum = maximum;
+                this.increment = increment;
+            }
+
+            internal SliderSettings(BinaryReader br)
+            {
+                this.minimum = br.ReadSingle();
+                this.maximum = br.ReadSingle();
+                this.increment = br.ReadSingle();
+            }
+
+            internal override void Write(BinaryWriter bw)
+            {
+                bw.Write(this.minimum);
+                bw.Write(this.maximum);
+                bw.Write(this.increment);
+            }
+        }
 
         internal byte RemoveKey(byte index)
         {
@@ -1272,6 +1495,16 @@ namespace Xmods.DataLib
               System.Runtime.Serialization.StreamingContext context)
                 : base(info, context) { }
         }
-
+        [global::System.Serializable]
+        public class CASPVersionException : ApplicationException
+        {
+            public CASPVersionException() { }
+            public CASPVersionException(string message) : base(message) { }
+            public CASPVersionException(string message, Exception inner) : base(message, inner) { }
+            protected CASPVersionException(
+              System.Runtime.Serialization.SerializationInfo info,
+              System.Runtime.Serialization.StreamingContext context)
+                : base(info, context) { }
+        }
     }
 }

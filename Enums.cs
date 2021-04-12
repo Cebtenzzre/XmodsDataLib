@@ -1153,7 +1153,8 @@ namespace Xmods.DataLib
             DXT5RLE2 = 0x3453CF95,
             DDS = 0x00B2D882,
             DDSuncompressed = 0xB6C8B6A0,
-            DATA = 0x545AC67A
+            DATA = 0x545AC67A,
+            LRLE = 0x2BC04EDF
         }
 
         [Flags] public enum CASParamFlag : byte
@@ -1170,6 +1171,8 @@ namespace Xmods.DataLib
         [Flags]
         public enum CASParamFlag2 : byte
         {
+            CreateInGame = 1 << 4,
+            Unknown = 1 << 3,
             DefaultForBodyTypeFemale = 1 << 2,
             DefaultForBodyTypeMale = 1 << 1,
             RestrictOppositeFrame = 1
@@ -1177,7 +1180,8 @@ namespace Xmods.DataLib
 
         [Flags] public enum OccultTypesDisabled : uint
         {
-            Witch = 1 << 3,
+            Spellcaster = 1 << 4,
+            Mermaid = 1 << 3,
             Vampire = 1 << 2,
             Alien = 1 << 1,
             Human = 1

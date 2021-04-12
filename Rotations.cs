@@ -279,6 +279,22 @@ namespace Xmods.DataLib
             this.angle = values[3];
         }
 
+        public AxisAngle(float angle, Vector3 axis)
+        {
+            this.x = axis.X;
+            this.y = axis.Y;
+            this.z = axis.Z;
+            this.angle = angle;
+        }
+
+        public AxisAngle(float angle, float[] axis)
+        {
+            this.x = axis[0];
+            this.y = axis[1];
+            this.z = axis[2];
+            this.angle = angle;
+        }
+
         public void Normalize()
         {
             double magnitude = Math.Sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
@@ -286,6 +302,34 @@ namespace Xmods.DataLib
             this.x /= magnitude;
             this.y /= magnitude;
             this.z /= magnitude;
+        }
+
+        public Matrix3D ToMatrix()
+        {
+            double c = Math.Cos(angle);
+            double s = Math.Sin(angle);
+            double t = 1.0 - c;
+            this.Normalize();
+            float[,] m = new float[3, 3];
+
+            m[0, 0] = (float)(c + x * x * t);
+            m[1, 1] = (float)(c + y * y * t);
+            m[2, 2] = (float)(c + z * z * t);
+
+            double tmp1 = x * y * t;
+            double tmp2 = z * s;
+            m[1, 0] = (float)(tmp1 + tmp2);
+            m[0, 1] = (float)(tmp1 - tmp2);
+            tmp1 = x * z * t;
+            tmp2 = y * s;
+            m[2, 0] = (float)(tmp1 - tmp2);
+            m[0, 2] = (float)(tmp1 + tmp2);
+            tmp1 = y * z * t;
+            tmp2 = x * s;
+            m[2, 1] = (float)(tmp1 + tmp2);
+            m[1, 2] = (float)(tmp1 - tmp2);
+
+            return new Matrix3D(m);
         }
     }
 
